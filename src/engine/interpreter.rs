@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use super::environment::{Environment, ExecutionContext};
 use crate::error::{HKLError, Span};
 use crate::parser::ast::*;
-use super::environment::{Environment, ExecutionContext};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -165,6 +165,12 @@ pub struct Interpreter {
     pub environment: Environment,
 }
 
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
@@ -190,10 +196,8 @@ impl Interpreter {
     pub fn run_pipeline(&mut self, pipeline: &PipelineDecl) -> Result<Value, HKLError> {
         let mut ctx = ExecutionContext::new(pipeline.name.clone());
         if let Some(session) = &pipeline.session {
-            ctx.env.set(
-                "session".into(),
-                Value::String_(session.clone()),
-            );
+            ctx.env
+                .set("session".into(), Value::String_(session.clone()));
         }
 
         // Bind mock inputs so pipelines can execute without a real binary yet.
@@ -253,7 +257,8 @@ impl Interpreter {
             }
             TopLevelDecl::Import(_) => Ok(Value::Void),
             TopLevelDecl::Const(const_) => {
-                let value = self.evaluate_expr(&const_.value, &mut ExecutionContext::new("const".into()))?;
+                let value =
+                    self.evaluate_expr(&const_.value, &mut ExecutionContext::new("const".into()))?;
                 self.environment.set(const_.name.clone(), value.clone());
                 Ok(value)
             }
@@ -286,10 +291,13 @@ impl Interpreter {
                 });
                 // Also expose as array-like via Map with .any() support via member
                 let wrapped = Value::Map(HashMap::from([
-                    ("matches".into(), Value::Array(vec![
-                        Value::String_("@0x401000".into()),
-                        Value::String_("@0x402100".into()),
-                    ])),
+                    (
+                        "matches".into(),
+                        Value::Array(vec![
+                            Value::String_("@0x401000".into()),
+                            Value::String_("@0x402100".into()),
+                        ]),
+                    ),
                     ("confidence".into(), Value::Float(0.82)),
                     ("any".into(), Value::Bool(true)), // used by matches.any() when treated as field
                 ]));
@@ -447,7 +455,13 @@ impl Interpreter {
                         for a in &call.args {
                             args.push(self.evaluate_expr(a, ctx)?);
                         }
-                        self.dispatch_call(&call.callee, &args, &call.named_args, call.span.clone(), ctx)
+                        self.dispatch_call(
+                            &call.callee,
+                            &args,
+                            &call.named_args,
+                            call.span.clone(),
+                            ctx,
+                        )
                     }
                     Expr::Ident(name) => self.call_builtin(name, &[left], &[], pipe.span.clone()),
                     other => {
@@ -467,7 +481,13 @@ impl Interpreter {
                 for a in &call.args {
                     args.push(self.evaluate_expr(a, ctx)?);
                 }
-                self.dispatch_call(&call.callee, &args, &call.named_args, call.span.clone(), ctx)
+                self.dispatch_call(
+                    &call.callee,
+                    &args,
+                    &call.named_args,
+                    call.span.clone(),
+                    ctx,
+                )
             }
             Expr::Member(member) => {
                 let object = self.evaluate_expr(&member.object, ctx)?;
@@ -570,7 +590,12 @@ impl Interpreter {
         }
     }
 
-    fn member_access(&mut self, object: Value, member: &str, span: Span) -> Result<Value, HKLError> {
+    fn member_access(
+        &mut self,
+        object: Value,
+        member: &str,
+        span: Span,
+    ) -> Result<Value, HKLError> {
         match &object {
             Value::Map(map) => {
                 if let Some(v) = map.get(member) {
@@ -582,7 +607,10 @@ impl Interpreter {
                     "any" => Value::Bool(!r.matches.is_empty()),
                     "confidence" => Value::Float(r.confidence),
                     "matches" => Value::Array(
-                        r.matches.iter().map(|m| Value::String_(m.clone())).collect(),
+                        r.matches
+                            .iter()
+                            .map(|m| Value::String_(m.clone()))
+                            .collect(),
                     ),
                     "signature_id" => Value::String_(r.signature_id.clone()),
                     _ => {
@@ -597,9 +625,9 @@ impl Interpreter {
                 return Ok(match member {
                     "session_id" => Value::String_(s.session_id.clone()),
                     "timestamp" => Value::Int(s.timestamp as i64),
-                    "hooks" => Value::Array(
-                        s.hooks.iter().map(|h| Value::String_(h.clone())).collect(),
-                    ),
+                    "hooks" => {
+                        Value::Array(s.hooks.iter().map(|h| Value::String_(h.clone())).collect())
+                    }
                     _ => {
                         return Err(HKLError::Runtime {
                             message: format!("Unknown field '{}' on EmuSnapshot", member),
@@ -630,13 +658,15 @@ impl Interpreter {
                     return Ok(Value::Int(arr.len() as i64));
                 }
                 if member == "high_confidence" {
-                    return Ok(Value::Bool(arr.iter().any(|v| match v {
-                        Value::IOC(i) => i.confidence >= 0.7,
-                        Value::Map(map) => map
-                            .get("confidence")
-                            .map(|c| matches!(c, Value::Float(f) if *f >= 0.7))
-                            .unwrap_or(false),
-                        _ => false,
+                    return Ok(Value::Bool(arr.iter().any(|v| {
+                        match v {
+                            Value::IOC(i) => i.confidence >= 0.7,
+                            Value::Map(map) => map
+                                .get("confidence")
+                                .map(|c| matches!(c, Value::Float(f) if *f >= 0.7))
+                                .unwrap_or(false),
+                            _ => false,
+                        }
                     })));
                 }
             }
@@ -685,27 +715,35 @@ impl Interpreter {
 
             // Method-style .any()
             if m.member == "any" {
-                return Ok(Value::Bool(object.is_truthy() && match &object {
-                    Value::Array(a) => !a.is_empty(),
-                    Value::HQLResult(r) => !r.matches.is_empty(),
-                    Value::Map(map) => map.get("any").map(|v| v.is_truthy()).unwrap_or(!map.is_empty()),
-                    _ => object.is_truthy(),
-                }));
+                return Ok(Value::Bool(
+                    object.is_truthy()
+                        && match &object {
+                            Value::Array(a) => !a.is_empty(),
+                            Value::HQLResult(r) => !r.matches.is_empty(),
+                            Value::Map(map) => map
+                                .get("any")
+                                .map(|v| v.is_truthy())
+                                .unwrap_or(!map.is_empty()),
+                            _ => object.is_truthy(),
+                        },
+                ));
             }
 
             // high_confidence on array of IOCs: iocs.high_confidence
             if m.member == "high_confidence" {
                 return match &object {
-                    Value::Array(arr) => Ok(Value::Bool(arr.iter().any(|v| match v {
-                        Value::IOC(i) => i.confidence >= 0.7,
-                        Value::Map(map) => map
-                            .get("confidence")
-                            .map(|c| match c {
-                                Value::Float(f) => *f >= 0.7,
-                                _ => false,
-                            })
-                            .unwrap_or(false),
-                        _ => false,
+                    Value::Array(arr) => Ok(Value::Bool(arr.iter().any(|v| {
+                        match v {
+                            Value::IOC(i) => i.confidence >= 0.7,
+                            Value::Map(map) => map
+                                .get("confidence")
+                                .map(|c| match c {
+                                    Value::Float(f) => *f >= 0.7,
+                                    _ => false,
+                                })
+                                .unwrap_or(false),
+                            _ => false,
+                        }
                     }))),
                     Value::IOC(i) => Ok(Value::Bool(i.confidence >= 0.7)),
                     _ => Ok(Value::Bool(false)),
@@ -825,17 +863,11 @@ impl Interpreter {
             BinaryOp::Add => match (&left, &right) {
                 (Value::Int(a), Value::Int(b)) => Ok(Value::Int(a + b)),
                 (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a + b)),
-                (Value::String_(a), Value::String_(b)) => {
-                    Ok(Value::String_(format!("{}{}", a, b)))
-                }
+                (Value::String_(a), Value::String_(b)) => Ok(Value::String_(format!("{}{}", a, b))),
                 (Value::Int(a), Value::Float(b)) => Ok(Value::Float(*a as f64 + b)),
                 (Value::Float(a), Value::Int(b)) => Ok(Value::Float(a + *b as f64)),
                 _ => Err(HKLError::Runtime {
-                    message: format!(
-                        "Cannot add {} and {}",
-                        left.type_name(),
-                        right.type_name()
-                    ),
+                    message: format!("Cannot add {} and {}", left.type_name(), right.type_name()),
                     span,
                 }),
             },
@@ -979,12 +1011,7 @@ impl Interpreter {
         }
     }
 
-    fn evaluate_unary(
-        &self,
-        op: UnaryOp,
-        operand: Value,
-        span: Span,
-    ) -> Result<Value, HKLError> {
+    fn evaluate_unary(&self, op: UnaryOp, operand: Value, span: Span) -> Result<Value, HKLError> {
         match op {
             UnaryOp::Neg => match operand {
                 Value::Int(n) => Ok(Value::Int(-n)),

@@ -31,7 +31,10 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, HKLError> {
                 while j < chars.len() && chars[j].is_whitespace() {
                     j += 1;
                 }
-                if j + 2 < chars.len() && chars[j] == '"' && chars[j + 1] == '"' && chars[j + 2] == '"'
+                if j + 2 < chars.len()
+                    && chars[j] == '"'
+                    && chars[j + 1] == '"'
+                    && chars[j + 2] == '"'
                 {
                     j += 3;
                     let start = j;
@@ -55,7 +58,10 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, HKLError> {
         if chars[i] == '@' {
             let start = i;
             i += 1;
-            if i + 1 < chars.len() && chars[i] == '0' && (chars[i + 1] == 'x' || chars[i + 1] == 'X') {
+            if i + 1 < chars.len()
+                && chars[i] == '0'
+                && (chars[i + 1] == 'x' || chars[i + 1] == 'X')
+            {
                 i += 2;
             }
             let hex_start = i;
@@ -71,10 +77,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, HKLError> {
         }
 
         // Hex literal 0x...
-        if chars[i] == '0'
-            && i + 1 < chars.len()
-            && (chars[i + 1] == 'x' || chars[i + 1] == 'X')
-        {
+        if chars[i] == '0' && i + 1 < chars.len() && (chars[i + 1] == 'x' || chars[i + 1] == 'X') {
             let start = i;
             i += 2;
             let hex_start = i;
@@ -140,7 +143,9 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, HKLError> {
                 tokens.push(Token::FloatLit(n));
             } else {
                 let s: String = chars[start..i].iter().collect();
-                let n: i64 = s.parse().map_err(|_| lex_err("Invalid integer", start..i))?;
+                let n: i64 = s
+                    .parse()
+                    .map_err(|_| lex_err("Invalid integer", start..i))?;
                 tokens.push(Token::IntLit(n));
             }
             continue;
@@ -216,10 +221,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, HKLError> {
             '.' => Token::Dot,
             '#' => Token::Hash,
             c => {
-                return Err(lex_err(
-                    &format!("Unexpected character '{}'", c),
-                    i..i + 1,
-                ));
+                return Err(lex_err(&format!("Unexpected character '{}'", c), i..i + 1));
             }
         };
         tokens.push(tok);

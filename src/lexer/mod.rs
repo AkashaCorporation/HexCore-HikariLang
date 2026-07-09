@@ -1,5 +1,7 @@
-pub mod tokens;
-pub mod lexer;
+#![allow(clippy::module_inception)]
 
-pub use tokens::{Token, Keyword};
+pub mod lexer;
+pub mod tokens;
+
 pub use lexer::tokenize;
+pub use tokens::{Keyword, Token};

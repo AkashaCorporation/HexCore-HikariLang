@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use super::core::{builtin_signatures, FunctionSig, HKLType};
 use crate::error::HKLError;
 use crate::parser::ast::*;
-use super::core::{HKLType, FunctionSig, builtin_signatures};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct TypeChecker {
@@ -373,11 +373,9 @@ impl TypeChecker {
                 "IRNode" => HKLType::IRNode,
                 "EmuSnapshot" => HKLType::EmuSnapshot,
                 "IOC" => HKLType::IOC,
-                "Pattern" => {
-                    HKLType::Pattern {
-                        pattern_type: super::core::PatternType::HQL,
-                    }
-                }
+                "Pattern" => HKLType::Pattern {
+                    pattern_type: super::core::PatternType::HQL,
+                },
                 "string" | "String" => HKLType::String_,
                 "int" | "Int" => HKLType::Int { width: Some(64) },
                 "float" | "Float" => HKLType::Float,

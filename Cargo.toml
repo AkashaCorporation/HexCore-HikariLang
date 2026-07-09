@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2021"
 description = "HikariScript — binary analysis workflow language for HexCore"
 authors = ["HikariSystem Team"]
+license = "Apache-2.0"
+repository = "https://github.com/AkashaCorporation/HexCore-HikariLang"
+homepage = "https://github.com/AkashaCorporation/HexCore-HikariLang"
+readme = "README.md"
+keywords = ["hexcore", "binary-analysis", "dsl", "malware", "pipeline"]
+categories = ["compilers", "command-line-utilities"]
 
 [[bin]]
 name = "hkl"

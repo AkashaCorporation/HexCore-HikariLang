@@ -112,34 +112,43 @@ pub fn hql_query_to_json(query: &HQLQuery) -> serde_json::Value {
     let mut json = serde_json::Map::new();
 
     if let Some(target) = &query.target {
-        json.insert("target".to_string(), serde_json::Value::String(target.clone()));
+        json.insert(
+            "target".to_string(),
+            serde_json::Value::String(target.clone()),
+        );
     }
 
     if !query.attributes.is_empty() {
-        let attrs: Vec<serde_json::Value> = query.attributes.iter().map(|attr| {
-            let mut attr_json = serde_json::Map::new();
-            attr_json.insert("field".to_string(), serde_json::Value::String(attr.field.clone()));
+        let attrs: Vec<serde_json::Value> = query
+            .attributes
+            .iter()
+            .map(|attr| {
+                let mut attr_json = serde_json::Map::new();
+                attr_json.insert(
+                    "field".to_string(),
+                    serde_json::Value::String(attr.field.clone()),
+                );
 
-            let value = match &attr.value {
-                AttrValue::Exact(s) => serde_json::Value::String(s.clone()),
-                AttrValue::ExactNum(n) => serde_json::Value::Number(
-                    serde_json::Number::from_f64(*n).unwrap_or(serde_json::Number::from(0))
-                ),
-                AttrValue::ExactBool(b) => serde_json::Value::Bool(*b),
-                AttrValue::Glob(s) => serde_json::Value::String(s.clone()),
-                AttrValue::Regex(s) => serde_json::Value::String(format!("re:{}", s)),
-            };
-            attr_json.insert("value".to_string(), value);
+                let value = match &attr.value {
+                    AttrValue::Exact(s) => serde_json::Value::String(s.clone()),
+                    AttrValue::ExactNum(n) => serde_json::Value::Number(
+                        serde_json::Number::from_f64(*n).unwrap_or(serde_json::Number::from(0)),
+                    ),
+                    AttrValue::ExactBool(b) => serde_json::Value::Bool(*b),
+                    AttrValue::Glob(s) => serde_json::Value::String(s.clone()),
+                    AttrValue::Regex(s) => serde_json::Value::String(format!("re:{}", s)),
+                };
+                attr_json.insert("value".to_string(), value);
 
-            serde_json::Value::Object(attr_json)
-        }).collect();
+                serde_json::Value::Object(attr_json)
+            })
+            .collect();
         json.insert("attributes".to_string(), serde_json::Value::Array(attrs));
     }
 
     if !query.contains.is_empty() {
-        let contains: Vec<serde_json::Value> = query.contains.iter()
-            .map(hql_query_to_json)
-            .collect();
+        let contains: Vec<serde_json::Value> =
+            query.contains.iter().map(hql_query_to_json).collect();
         json.insert("contains".to_string(), serde_json::Value::Array(contains));
     }
 
@@ -169,12 +178,10 @@ mod tests {
     fn test_hql_to_json() {
         let query = HQLQuery {
             target: Some("CCallExpr".to_string()),
-            attributes: vec![
-                AttributeCheck {
-                    field: "callee".to_string(),
-                    value: AttrValue::Exact("VirtualProtect".to_string()),
-                },
-            ],
+            attributes: vec![AttributeCheck {
+                field: "callee".to_string(),
+                value: AttrValue::Exact("VirtualProtect".to_string()),
+            }],
             contains: vec![],
             operands: vec![],
             min_depth: None,

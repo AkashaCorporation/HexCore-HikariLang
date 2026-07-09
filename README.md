@@ -1,5 +1,8 @@
 # HexCore · HikariLang
 
+[![CI](https://github.com/AkashaCorporation/HexCore-HikariLang/actions/workflows/ci.yml/badge.svg)](https://github.com/AkashaCorporation/HexCore-HikariLang/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 **HikariLang** (also *HikariScript* / **HKL**) is the binary-analysis workflow language for [HexCore](https://github.com/AkashaCorporation).
 
 Write pipelines that orchestrate static analysis, IR lifting, decompilation, semantic queries (HQL), and dynamic emulation — as a single declarative script.
@@ -166,8 +169,10 @@ Only source and project metadata. Build output is **not** in git:
 HexCore-HikariLang/
 ├── Cargo.toml
 ├── Cargo.lock          # locked deps for reproducible CLI builds
+├── LICENSE             # Apache-2.0
 ├── README.md
 ├── .gitignore
+├── .github/workflows/  # CI (fmt, clippy, test, fixture smoke)
 ├── src/
 │   ├── main.rs         # hkl CLI
 │   ├── lib.rs
@@ -223,7 +228,11 @@ cargo build --release
 
 ## License
 
-Proprietary — © Akasha Corporation. Internal HexCore component.
+Licensed under the **Apache License, Version 2.0**. See [LICENSE](LICENSE).
+
+```
+Copyright 2026 Akasha Corporation
+```
 
 ---
 

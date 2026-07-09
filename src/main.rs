@@ -1,10 +1,10 @@
-use std::fs;
-use std::path::PathBuf;
 use clap::{Parser, Subcommand};
+use hikari_lang::engine::interpreter::Interpreter;
 use hikari_lang::lexer::tokenize;
 use hikari_lang::parser::parse_program;
 use hikari_lang::types::typechecker::TypeChecker;
-use hikari_lang::engine::interpreter::Interpreter;
+use std::fs;
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "hkl")]
@@ -95,7 +95,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn load_program(file: &PathBuf) -> Result<hikari_lang::parser::ast::Program, Box<dyn std::error::Error>> {
+fn load_program(
+    file: &PathBuf,
+) -> Result<hikari_lang::parser::ast::Program, Box<dyn std::error::Error>> {
     let source = fs::read_to_string(file)?;
     let tokens = tokenize(&source)?;
     let program = parse_program(&tokens)?;
@@ -111,7 +113,10 @@ fn run_pipeline(
         println!("note: binary path {:?} reserved for future plug-in", b);
     }
     if let Some(s) = &session {
-        println!("note: session override {:?} (applied when runtime supports it)", s);
+        println!(
+            "note: session override {:?} (applied when runtime supports it)",
+            s
+        );
     }
 
     let program = load_program(file)?;

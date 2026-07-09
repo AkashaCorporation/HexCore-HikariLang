@@ -1,9 +1,15 @@
+use super::bridge::{hql_query_to_json, parse_hql_query, HQLQuery};
 use crate::error::{HKLError, Span};
 use crate::parser::ast::HQLQueryBlock;
-use super::bridge::{HQLQuery, parse_hql_query, hql_query_to_json};
 
 pub struct HQLProcessor {
     queries: Vec<HQLQuery>,
+}
+
+impl Default for HQLProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HQLProcessor {
@@ -20,9 +26,7 @@ impl HQLProcessor {
     }
 
     pub fn to_json(&self) -> serde_json::Value {
-        let queries: Vec<serde_json::Value> = self.queries.iter()
-            .map(hql_query_to_json)
-            .collect();
+        let queries: Vec<serde_json::Value> = self.queries.iter().map(hql_query_to_json).collect();
         serde_json::Value::Array(queries)
     }
 
@@ -47,7 +51,11 @@ pub fn extract_hql_queries(content: &str) -> Vec<(String, Span)> {
                     j += 1;
                 }
 
-                if j + 2 < chars.len() && chars[j] == '"' && chars[j + 1] == '"' && chars[j + 2] == '"' {
+                if j + 2 < chars.len()
+                    && chars[j] == '"'
+                    && chars[j + 1] == '"'
+                    && chars[j + 2] == '"'
+                {
                     let start = j + 3;
                     // Find closing """
                     let mut end = start;

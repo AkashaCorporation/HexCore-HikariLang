@@ -17,14 +17,14 @@ pub enum Token {
     Keyword(Keyword),
 
     // Operators
-    Assign,    // =
-    Pipe,      // |>
-    FatArrow,  // =>
-    ThinArrow, // ->
-    DotDot,    // ..
-    ColonColon,// ::
-    At,        // @
-    Hash,      // #
+    Assign,     // =
+    Pipe,       // |>
+    FatArrow,   // =>
+    ThinArrow,  // ->
+    DotDot,     // ..
+    ColonColon, // ::
+    At,         // @
+    Hash,       // #
 
     // Comparison
     Eq, // ==

@@ -3,7 +3,7 @@ pub mod hql_bridge;
 pub mod typechecker;
 
 pub use core::{
-    HKLType, BinaryFormat, PatternType, StringEncoding, FunctionSig, Param as TypeParam,
-    builtin_signatures,
+    builtin_signatures, BinaryFormat, FunctionSig, HKLType, Param as TypeParam, PatternType,
+    StringEncoding,
 };
 pub use typechecker::TypeChecker;

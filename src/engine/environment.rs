@@ -1,10 +1,16 @@
-use std::collections::HashMap;
 use super::interpreter::Value;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
     variables: HashMap<String, Value>,
     parent: Option<Box<Environment>>,
+}
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Environment {
@@ -23,12 +29,14 @@ impl Environment {
     }
 
     pub fn get(&self, name: &str) -> Option<&Value> {
-        self.variables.get(name)
+        self.variables
+            .get(name)
             .or_else(|| self.parent.as_ref().and_then(|p| p.get(name)))
     }
 
     pub fn get_mut(&mut self, name: &str) -> Option<&mut Value> {
-        self.variables.get_mut(name)
+        self.variables
+            .get_mut(name)
             .or_else(|| self.parent.as_mut().and_then(|p| p.get_mut(name)))
     }
 

@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use super::builtins::{default_builtins, BuiltinFn};
+use super::environment::ExecutionContext;
+use super::interpreter::{Interpreter, Value};
 use crate::error::HKLError;
 use crate::parser::ast::*;
-use super::interpreter::{Interpreter, Value};
-use super::environment::ExecutionContext;
-use super::builtins::{default_builtins, BuiltinFn};
+use std::collections::HashMap;
 
 pub struct PipelineEngine {
     interpreter: Interpreter,

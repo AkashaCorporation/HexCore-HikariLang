@@ -1,6 +1,8 @@
+use super::ast::*;
 use crate::error::{HKLError, Span};
 use crate::lexer::{Keyword, Token};
-use super::ast::*;
+
+type ArgList = (Vec<Expr>, Vec<(String, Expr)>);
 
 /// Recursive-descent expression parser over a token slice.
 pub struct ExprParser<'a> {
@@ -70,28 +72,26 @@ impl<'a> ExprParser<'a> {
 
     fn parse_or(&mut self) -> Result<Expr, HKLError> {
         let mut left = self.parse_and()?;
-        loop {
-            let op = match self.peek() {
-                Some(Token::PipePipe) | Some(Token::Keyword(Keyword::Or)) => BinaryOp::Or,
-                _ => break,
-            };
+        while matches!(
+            self.peek(),
+            Some(Token::PipePipe) | Some(Token::Keyword(Keyword::Or))
+        ) {
             self.advance();
             let right = self.parse_and()?;
-            left = bin(op, left, right);
+            left = bin(BinaryOp::Or, left, right);
         }
         Ok(left)
     }
 
     fn parse_and(&mut self) -> Result<Expr, HKLError> {
         let mut left = self.parse_equality()?;
-        loop {
-            let op = match self.peek() {
-                Some(Token::AmpAmp) | Some(Token::Keyword(Keyword::And)) => BinaryOp::And,
-                _ => break,
-            };
+        while matches!(
+            self.peek(),
+            Some(Token::AmpAmp) | Some(Token::Keyword(Keyword::And))
+        ) {
             self.advance();
             let right = self.parse_equality()?;
-            left = bin(op, left, right);
+            left = bin(BinaryOp::And, left, right);
         }
         Ok(left)
     }
@@ -293,7 +293,7 @@ impl<'a> ExprParser<'a> {
         Ok(expr)
     }
 
-    fn parse_arg_list(&mut self) -> Result<(Vec<Expr>, Vec<(String, Expr)>), HKLError> {
+    fn parse_arg_list(&mut self) -> Result<ArgList, HKLError> {
         let mut args = Vec::new();
         let mut named_args = Vec::new();
 
@@ -466,7 +466,10 @@ impl<'a> ExprParser<'a> {
                 &format!("Unexpected token in expression: {}", other),
                 self.pos..self.pos + 1,
             )),
-            None => Err(parse_err("Unexpected EOF in expression", self.pos..self.pos)),
+            None => Err(parse_err(
+                "Unexpected EOF in expression",
+                self.pos..self.pos,
+            )),
         }
     }
 

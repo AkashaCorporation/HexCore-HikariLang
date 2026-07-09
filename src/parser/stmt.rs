@@ -1,7 +1,7 @@
-use crate::error::{HKLError, Span};
-use crate::lexer::{Keyword, Token};
 use super::ast::*;
 use super::expr::ExprParser;
+use crate::error::{HKLError, Span};
+use crate::lexer::{Keyword, Token};
 
 pub struct Parser<'a> {
     tokens: &'a [Token],
@@ -62,7 +62,10 @@ impl<'a> Parser<'a> {
                 &format!("Expected identifier, got {}", t),
                 self.pos.saturating_sub(1)..self.pos,
             )),
-            None => Err(parse_err("Expected identifier, got EOF", self.pos..self.pos)),
+            None => Err(parse_err(
+                "Expected identifier, got EOF",
+                self.pos..self.pos,
+            )),
         }
     }
 
@@ -71,9 +74,7 @@ impl<'a> Parser<'a> {
             Some(Token::Keyword(Keyword::Pipeline)) => {
                 Ok(TopLevelDecl::Pipeline(self.parse_pipeline()?))
             }
-            Some(Token::Keyword(Keyword::Fn)) => {
-                Ok(TopLevelDecl::Function(self.parse_function()?))
-            }
+            Some(Token::Keyword(Keyword::Fn)) => Ok(TopLevelDecl::Function(self.parse_function()?)),
             Some(t) => Err(parse_err(
                 &format!("Expected pipeline or fn, got {}", t),
                 self.pos..self.pos + 1,
@@ -373,10 +374,7 @@ impl<'a> Parser<'a> {
         self.expect(&Token::Keyword(Keyword::Emit))?;
         let value = self.parse_expr()?;
         self.optional_semicolon();
-        Ok(Statement::Emit(EmitStatement {
-            value,
-            span: 0..0,
-        }))
+        Ok(Statement::Emit(EmitStatement { value, span: 0..0 }))
     }
 
     fn parse_store(&mut self) -> Result<Statement, HKLError> {
@@ -394,10 +392,7 @@ impl<'a> Parser<'a> {
             _ => None,
         };
         self.optional_semicolon();
-        Ok(Statement::Store(StoreStatement {
-            target,
-            span: 0..0,
-        }))
+        Ok(Statement::Store(StoreStatement { target, span: 0..0 }))
     }
 
     fn parse_notify(&mut self) -> Result<Statement, HKLError> {
@@ -419,26 +414,22 @@ impl<'a> Parser<'a> {
 
     fn parse_return(&mut self) -> Result<Statement, HKLError> {
         self.expect(&Token::Keyword(Keyword::Return))?;
-        let value = if matches!(self.peek(), Some(Token::Semicolon) | Some(Token::RBrace) | None)
-        {
+        let value = if matches!(
+            self.peek(),
+            Some(Token::Semicolon) | Some(Token::RBrace) | None
+        ) {
             None
         } else {
             Some(self.parse_expr()?)
         };
         self.optional_semicolon();
-        Ok(Statement::Return(ReturnStatement {
-            value,
-            span: 0..0,
-        }))
+        Ok(Statement::Return(ReturnStatement { value, span: 0..0 }))
     }
 
     fn parse_expr_stmt(&mut self) -> Result<Statement, HKLError> {
         let expr = self.parse_expr()?;
         self.optional_semicolon();
-        Ok(Statement::Expr(ExprStatement {
-            expr,
-            span: 0..0,
-        }))
+        Ok(Statement::Expr(ExprStatement { expr, span: 0..0 }))
     }
 
     fn parse_expr(&mut self) -> Result<Expr, HKLError> {

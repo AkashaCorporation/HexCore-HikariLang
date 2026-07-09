@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use crate::error::{HKLError, Span};
 use super::interpreter::Value;
+use crate::error::{HKLError, Span};
+use std::collections::HashMap;
 
 pub trait BuiltinFn: Send + Sync {
     fn call(&self, args: &[Value], span: Span) -> Result<Value, HKLError>;

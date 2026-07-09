@@ -1,7 +1,7 @@
 pub mod ast;
 pub mod expr;
-pub mod stmt;
 pub mod precedence;
+pub mod stmt;
 
 pub use ast::*;
 pub use expr::{parse_expression, ExprParser};

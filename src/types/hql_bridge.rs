@@ -3,6 +3,12 @@
 
 pub struct HQLBridge;
 
+impl Default for HQLBridge {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HQLBridge {
     pub fn new() -> Self {
         HQLBridge
