@@ -1,0 +1,51 @@
+# ── Rust / Cargo ──────────────────────────────────────────
+/target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# ── Build artifacts & binaries ────────────────────────────
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+*.o
+*.obj
+*.a
+*.lib
+*.rlib
+*.rmeta
+
+# ── IDE / editor ──────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ── OS junk ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ── Logs / local env ──────────────────────────────────────
+*.log
+.env
+.env.*
+!.env.example
+
+# ── Coverage / profiling ──────────────────────────────────
+coverage/
+lcov.info
+*.profraw
+*.profdata
+perf.data*
+
+# ── Misc local ────────────────────────────────────────────
+*.tmp
+*.bak
+.cache/

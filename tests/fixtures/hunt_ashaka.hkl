@@ -1,0 +1,37 @@
+pipeline HuntAshakaV5 {
+    input binary: PE64 | ELF64
+    session: "ashaka_hunt_2026"
+
+    // Static phase
+    let cfg = pathfinder(binary, hints: "DWARF | PDB");
+    let ir = remill.lift(binary, cfg);
+    let decomp = helix.decompile(ir, confidence: 0.7);
+
+    // Semantic query with embedded HQL
+    matches = hql """
+        fn where
+            calls("VirtualProtect") and
+            contains_string("Ashaka") and
+            has_xor_loop(key_size: 8..32)
+    """ on decomp;
+
+    // Dynamic phase
+    if matches.any() {
+        snapshot = elixir.emulate(binary,
+            hooks: "Win32Full | LinuxSyscall",
+            timeout: 45,
+            stalker: true
+        );
+
+        iocs = detect_ioc(snapshot);
+    }
+
+    // Output & persistence
+    report = generate_report {
+        format: "Markdown",
+        include: [decomp, iocs, timeline]
+    };
+
+    store session;
+    notify "threat-intel@akashacorp" if iocs.high_confidence;
+}

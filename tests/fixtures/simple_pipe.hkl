@@ -1,0 +1,9 @@
+pipeline QuickTriage {
+    input binary: Binary
+
+    let strings = extract_strings(binary);
+    let imports = get_imports(binary);
+    let suspicious = filter imports where is_suspicious(name);
+
+    emit { strings, imports: suspicious };
+}
