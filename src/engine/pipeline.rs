@@ -1,21 +1,32 @@
-use super::builtins::{default_builtins, BuiltinFn};
 use super::environment::ExecutionContext;
 use super::interpreter::{Interpreter, Value};
+use super::runtime::RuntimeHost;
 use crate::error::HKLError;
 use crate::parser::ast::*;
 use std::collections::HashMap;
 
 pub struct PipelineEngine {
     interpreter: Interpreter,
-    #[allow(dead_code)]
-    builtins: HashMap<String, Box<dyn BuiltinFn>>,
 }
 
 impl PipelineEngine {
     pub fn new() -> Self {
         PipelineEngine {
             interpreter: Interpreter::new(),
-            builtins: default_builtins(),
+        }
+    }
+
+    /// Builds a pipeline engine backed by a concrete HexCore runtime host.
+    ///
+    /// The default engine retains the development mock host. Production
+    /// integration can inject one host without changing parser or interpreter
+    /// semantics.
+    pub fn with_runtime<H>(runtime: H) -> Self
+    where
+        H: RuntimeHost + 'static,
+    {
+        PipelineEngine {
+            interpreter: Interpreter::with_runtime(runtime),
         }
     }
 
@@ -56,7 +67,8 @@ impl PipelineEngine {
         _query: &HQLQueryBlock,
         _target: &Value,
     ) -> Result<Value, HKLError> {
-        // Mock HQL execution — real engine plugs in later
+        // Mock HQL execution — real engine plugs in later.
+        // HQL integration intentionally remains outside this runtime-host wave.
         Ok(Value::Array(Vec::new()))
     }
 }
