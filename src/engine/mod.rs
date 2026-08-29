@@ -2,6 +2,7 @@ pub mod builtins;
 pub mod environment;
 pub mod interpreter;
 pub mod pipeline;
+pub mod runtime;
 
 pub use builtins::{default_builtins, BuiltinFn};
 pub use environment::{Environment, ExecutionContext};
@@ -10,3 +11,4 @@ pub use interpreter::{
     Value,
 };
 pub use pipeline::PipelineEngine;
+pub use runtime::{MockRuntimeHost, RuntimeCall, RuntimeHost};

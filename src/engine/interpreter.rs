@@ -1,4 +1,5 @@
 use super::environment::{Environment, ExecutionContext};
+use super::runtime::{MockRuntimeHost, RuntimeCall, RuntimeHost};
 use crate::error::{HKLError, Span};
 use crate::parser::ast::*;
 use std::collections::HashMap;
@@ -163,6 +164,7 @@ impl std::fmt::Display for Value {
 
 pub struct Interpreter {
     pub environment: Environment,
+    runtime: Box<dyn RuntimeHost>,
 }
 
 impl Default for Interpreter {
@@ -173,8 +175,16 @@ impl Default for Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
+        Self::with_runtime(MockRuntimeHost)
+    }
+
+    pub fn with_runtime<H>(runtime: H) -> Self
+    where
+        H: RuntimeHost + 'static,
+    {
         Interpreter {
             environment: Environment::new(),
+            runtime: Box::new(runtime),
         }
     }
 
@@ -463,7 +473,16 @@ impl Interpreter {
                             ctx,
                         )
                     }
-                    Expr::Ident(name) => self.call_builtin(name, &[left], &[], pipe.span.clone()),
+                    Expr::Ident(name) => {
+                        if self.runtime.supports(name) {
+                            self.call_runtime(name, &[left], &[], pipe.span.clone())
+                        } else {
+                            Err(HKLError::Runtime {
+                                message: format!("Unknown function/builtin: {}", name),
+                                span: pipe.span.clone(),
+                            })
+                        }
+                    }
                     other => {
                         let right = self.evaluate_expr(other, ctx)?;
                         match right {
@@ -699,15 +718,12 @@ impl Interpreter {
 
         // member call: helix.decompile(...), matches.any()
         if let Expr::Member(m) = callee {
-            // Module-style builtins first (do not resolve module as a variable):
-            // remill.lift, helix.decompile, elixir.emulate
+            // Module-style runtime calls first (do not resolve the module as a variable):
+            // remill.lift, helix.decompile, elixir.emulate, or host-provided functions.
             if let Expr::Ident(module) = m.object.as_ref() {
                 let full = format!("{}.{}", module, m.member);
-                match self.call_builtin(&full, args, &named_vals, span.clone()) {
-                    Ok(v) => return Ok(v),
-                    Err(_) => {
-                        // fall through to method-style on a real value
-                    }
+                if self.runtime.supports(&full) {
+                    return self.call_runtime(&full, args, &named_vals, span.clone());
                 }
             }
 
@@ -761,7 +777,13 @@ impl Interpreter {
             {
                 return self.call_function(func, args.to_vec(), ctx);
             }
-            return self.call_builtin(name, args, &named_vals, span);
+            if self.runtime.supports(name) {
+                return self.call_runtime(name, args, &named_vals, span);
+            }
+            return Err(HKLError::Runtime {
+                message: format!("Unknown function/builtin: {}", name),
+                span,
+            });
         }
 
         // Evaluate callee as value
@@ -1067,142 +1089,19 @@ impl Interpreter {
         })
     }
 
-    fn call_builtin(
+    fn call_runtime(
         &mut self,
         name: &str,
         args: &[Value],
         named: &[(String, Value)],
         span: Span,
     ) -> Result<Value, HKLError> {
-        match name {
-            "pathfinder" => {
-                println!("  [mock] pathfinder(...)");
-                Ok(Value::IRNode("cfg_mock".into()))
-            }
-            "remill.lift" => {
-                println!("  [mock] remill.lift(...)");
-                Ok(Value::IRNode("ir_lifted".into()))
-            }
-            "helix.decompile" => {
-                let conf = named
-                    .iter()
-                    .find(|(k, _)| k == "confidence")
-                    .and_then(|(_, v)| match v {
-                        Value::Float(f) => Some(*f),
-                        Value::Int(i) => Some(*i as f64),
-                        _ => None,
-                    })
-                    .unwrap_or(0.5);
-                println!("  [mock] helix.decompile(confidence={})", conf);
-                Ok(Value::Map(HashMap::from([
-                    ("name".into(), Value::String_("decompiled_func".into())),
-                    (
-                        "body".into(),
-                        Value::String_("// mock decompiled pseudocode".into()),
-                    ),
-                    ("confidence".into(), Value::Float(conf)),
-                ])))
-            }
-            "elixir.emulate" => {
-                let hooks = named
-                    .iter()
-                    .find(|(k, _)| k == "hooks")
-                    .map(|(_, v)| v.to_string_value())
-                    .unwrap_or_else(|| "default".into());
-                let timeout = named
-                    .iter()
-                    .find(|(k, _)| k == "timeout")
-                    .and_then(|(_, v)| match v {
-                        Value::Int(i) => Some(*i),
-                        _ => None,
-                    })
-                    .unwrap_or(30);
-                let stalker = named
-                    .iter()
-                    .find(|(k, _)| k == "stalker")
-                    .map(|(_, v)| v.is_truthy())
-                    .unwrap_or(false);
-                println!(
-                    "  [mock] elixir.emulate(hooks={}, timeout={}, stalker={})",
-                    hooks, timeout, stalker
-                );
-                Ok(Value::EmuSnapshot(EmuSnapshotValue {
-                    session_id: "emu_mock_session".into(),
-                    timestamp: 1_700_000_000,
-                    hooks: vec![hooks],
-                }))
-            }
-            "detect_ioc" => {
-                println!("  [mock] detect_ioc(...)");
-                Ok(Value::Array(vec![
-                    Value::IOC(IOCValue {
-                        ioc_type: "url".into(),
-                        value: "http://malicious.example.com".into(),
-                        confidence: 0.85,
-                    }),
-                    Value::IOC(IOCValue {
-                        ioc_type: "mutex".into(),
-                        value: "Global\\AshakaV5".into(),
-                        confidence: 0.92,
-                    }),
-                ]))
-            }
-            "generate_report" => {
-                // Accept map arg or named/positional
-                let report = if let Some(Value::Map(m)) = args.first() {
-                    let format = m
-                        .get("format")
-                        .map(|v| v.to_string_value())
-                        .unwrap_or_else(|| "Markdown".into());
-                    format!(
-                        "# Mock Report ({})\n\nGenerated by HikariScript runtime (mock).\n",
-                        format
-                    )
-                } else {
-                    "# Mock Report\n\nGenerated by HikariScript runtime (mock).\n".into()
-                };
-                println!("  [mock] generate_report");
-                Ok(Value::String_(report))
-            }
-            "extract_strings" => {
-                println!("  [mock] extract_strings(...)");
-                Ok(Value::Array(vec![
-                    Value::String_("Mock string 1".into()),
-                    Value::String_("/tmp/payload.bin".into()),
-                    Value::String_("Ashaka".into()),
-                ]))
-            }
-            "get_imports" => {
-                println!("  [mock] get_imports(...)");
-                Ok(Value::Array(vec![
-                    Value::String_("kernel32.dll!VirtualProtect".into()),
-                    Value::String_("ntdll.dll!NtAllocateVirtualMemory".into()),
-                    Value::String_("ws2_32.dll!connect".into()),
-                ]))
-            }
-            "filter" | "is_suspicious" => {
-                // is_suspicious used in filter predicate — return true for mock
-                if name == "is_suspicious" {
-                    return Ok(Value::Bool(true));
-                }
-                if let Some(Value::Array(arr)) = args.first() {
-                    Ok(Value::Array(arr.clone()))
-                } else {
-                    Ok(Value::Array(Vec::new()))
-                }
-            }
-            "chacha_detection" | "refcount_scanner" | "api_hash_resolver" => {
-                Ok(Value::HQLResult(HQLMatchResultValue {
-                    signature_id: name.into(),
-                    matches: Vec::new(),
-                    confidence: 0.0,
-                }))
-            }
-            _ => Err(HKLError::Runtime {
-                message: format!("Unknown function/builtin: {}", name),
-                span,
-            }),
-        }
+        self.runtime.call(RuntimeCall {
+            name,
+            args,
+            named_args: named,
+            span,
+        })
     }
 }
 
